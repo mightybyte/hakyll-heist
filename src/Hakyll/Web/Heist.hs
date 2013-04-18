@@ -64,10 +64,10 @@ loadHeist :: FilePath
           -> IO (State a)
 loadHeist baseDir a b = do
     tState <- runEitherT $ do
-        templates <- loadTemplates baseDir
         let splices' = [("hakyll", hakyllSplice)] ++ a
             attrs = [("url", urlAttrSplice)] ++ b
-            hc = HeistConfig splices' defaultLoadTimeSplices [] attrs templates
+            hc = HeistConfig splices' defaultLoadTimeSplices [] attrs
+                 [loadTemplates baseDir]
         initHeist hc
     either (error . concat) return tState
 
