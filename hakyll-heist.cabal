@@ -20,13 +20,13 @@ library
   hs-source-dirs: src
   ghc-options: -Wall
   build-depends: base
-               , hakyll        == 4.2.*
-               , heist         == 0.12.*
-               , blaze-builder == 0.3.*
+               , hakyll        >= 4.2  && < 4.6
+               , heist         >= 0.13 && < 0.14
+               , blaze-builder >= 0.3  && < 0.4
                , bytestring
-               , errors        == 1.4.*
-               , mtl           == 2.1.*
-               , text          == 0.11.*
-               , transformers  == 0.3.*
-               , utf8-string   == 0.3.*
-               , xmlhtml       == 0.2.*
+               , errors        >= 1.4  && < 1.5
+               , mtl           >= 2.1  && < 2.3
+               , text          >= 0.11 && < 1.2
+               , transformers  >= 0.3  && < 0.5
+               , utf8-string   >= 0.3  && < 0.4
+               , xmlhtml       >= 0.2  && < 0.3

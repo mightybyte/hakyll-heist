@@ -24,18 +24,18 @@ module Hakyll.Web.Heist
   ) where
 
 --------------------------------------------------------------------------------
-import           Blaze.ByteString.Builder (toByteString)
-import           Control.Error (runEitherT)
-import           Control.Monad (liftM)
-import           Control.Monad.Reader (ReaderT(..), ask)
-import           Control.Monad.Trans (lift)
-import           Data.ByteString (ByteString)
-import           Data.ByteString.UTF8 (toString, fromString)
-import           Data.List (intersperse)
-import           Data.Maybe (fromMaybe)
-import           Data.Monoid ((<>))
+import           Blaze.ByteString.Builder    (toByteString)
+import           Control.Error               (runEitherT)
+import           Control.Monad               (liftM)
+import           Control.Monad.Reader        (ReaderT (..), ask)
+import           Control.Monad.Trans         (lift)
+import           Data.ByteString             (ByteString)
+import           Data.ByteString.UTF8        (fromString, toString)
+import           Data.List                   (intersperse)
+import           Data.Maybe                  (fromMaybe)
+import           Data.Monoid                 (mempty, (<>))
+import qualified Data.Text                   as T
 import           Text.XmlHtml
-import qualified Data.Text as T
 
 --------------------------------------------------------------------------------
 import           Hakyll.Core.Compiler
@@ -44,7 +44,7 @@ import           Hakyll.Web.Template.Context
 
 --------------------------------------------------------------------------------
 import           Heist
-import qualified Heist.Interpreted as I
+import qualified Heist.Interpreted           as I
 
 --------------------------------------------------------------------------------
 type Content a = (Context a, Item a)
@@ -57,16 +57,20 @@ type State   a = HeistState (SpliceT a)
 -- the default splices and the @hakyll@ splice).
 loadHeist :: FilePath
           -- ^ Directory containing the templates.
-          -> [(T.Text, I.Splice (SpliceT a))]
+          -> Splices (I.Splice (SpliceT a))
           -- ^ List of compiled Heist slices.
-          -> [(T.Text, AttrSplice (SpliceT a))]
+          -> Splices (AttrSplice (SpliceT a))
           -- ^ List of Heist attribute slices.
           -> IO (State a)
 loadHeist baseDir a b = do
     tState <- runEitherT $ do
-        let splices' = [("hakyll", hakyllSplice)] ++ a
-            attrs = [("url", urlAttrSplice)] ++ b
-            hc = HeistConfig splices' defaultLoadTimeSplices [] attrs
+        let splices' = do
+                "hakyll" #! hakyllSplice
+                a
+            attrs = do
+                "url" #! urlAttrSplice
+                b
+            hc = HeistConfig splices' defaultLoadTimeSplices mempty attrs
                  [loadTemplates baseDir]
         initHeist hc
     either (error . concat) return tState
@@ -75,7 +79,7 @@ loadHeist baseDir a b = do
 -- | Load all of the templates from the given directory and return an
 -- initialized 'HeistState' with the default splices.
 loadDefaultHeist :: FilePath -> IO (State a)
-loadDefaultHeist baseDir = loadHeist baseDir [] []
+loadDefaultHeist baseDir = loadHeist baseDir mempty mempty
 
 --------------------------------------------------------------------------------
 -- | Apply a Heist template to a Hakyll 'Item'.  You need a
@@ -128,7 +132,7 @@ hakyllSplice = do
     case lookup "field" $ elementAttrs node of
       Nothing -> fail fieldError
       Just f  -> do content <- lift $ lift $ context' $ T.unpack f
-                    lift $ lift $ renderField (elementAttrs node) content
+                    lift $ lift $ renderField (elementAttrs node) (cfStr content)
     where fieldError = "The `hakyll' splice is missing the `field' attribute"
 
 --------------------------------------------------------------------------------
@@ -159,5 +163,9 @@ urlAttrSplice :: AttrSplice (SpliceT a)
 urlAttrSplice a = do
   (context, item) <- lift ask
   let url = unContext (context <> missingField) "url" item
-  val <- lift $ lift $ liftM T.pack url
+  val <- lift $ lift $ liftM (T.pack . cfStr) url
   return $ (if T.null a then "href" else a, val) : []
+
+cfStr :: ContextField -> String
+cfStr (StringField s) = s
+cfStr (ListField _ _) = ""
